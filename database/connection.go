@@ -98,11 +98,20 @@ func MakeDbBackup(username, password string) error {
 		return fmt.Errorf("usuário não tem permissão para fazer backup")
 	}
 
-	backupDir := "C:\\Users\\Free\\Desktop" // Exemplo: Caminho para a área de trabalho do Windows
+	backupDir := "C:\\Users\\<usuario-do-sistema>\\Desktop"
 
-	backupFile := filepath.Join(backupDir, "backup.sql")
+	backupFile := filepath.Join(backupDir, "arquivo.backup")
 
-	cmd := exec.Command("pg_dump", "-U", username, "-d", "loja")
+	fmt.Sprintln(backupFile)
+
+	cmd := exec.Command("pg_dump.exe",
+		"--host", "localhost",
+		"--port", "5433",
+		"--username", username,
+		"--format tar",
+		"--file", backupFile,
+		"loja")
+
 
 	outFile, err := os.Create(backupFile)
 	if err != nil {
