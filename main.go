@@ -13,15 +13,23 @@ import (
 
 var tpl *template.Template
 
+type User struct {
+	Username string
+	Password string
+}
+
+var authenticatedUser User
+
 func main() {
 	tpl, _ = template.ParseGlob("templates/*.html")
-	database.DBconnection()
 
 	r := mux.NewRouter()
 	r.HandleFunc("/", HomeHandler)
 
 	r.HandleFunc("/login", ShowLoginFormHandler).Methods("GET")
 	r.HandleFunc("/login", LoginAuthHandler).Methods("POST")
+
+	r.HandleFunc("/backup", DbBackupHandler).Methods("POST")
 
 	r.HandleFunc("/employees/{id}", routes.GetEmployeeByIDHandler).Methods("GET")
 	r.HandleFunc("/employees", routes.GetEmployeesHandler).Methods("GET")
@@ -53,7 +61,7 @@ func LoginAuthHandler(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println("username:", username, "password:", password)
 
-	usersAndPasswords, err := database.GetUserAndPassword()
+	usersAndPasswords, err := database.GetUserAndPassword(username, password)
 	if err != nil {
 		log.Println("Erro ao obter usuários e senhas do banco de dados:", err)
 		http.Error(w, "Erro interno do servidor", http.StatusInternalServerError)
@@ -64,12 +72,20 @@ func LoginAuthHandler(w http.ResponseWriter, r *http.Request) {
 	for _, u := range usersAndPasswords {
 		if u.Name == username && u.Password == password {
 			valid = true
+			authenticatedUser = User{Username: username, Password: password}
 			break
 		}
 	}
 
 	if valid {
-		err := tpl.ExecuteTemplate(w, "dashboard.html", nil)
+		_, err := database.DBconnection(username, password)
+		if err != nil {
+			log.Println("Erro ao conectar ao banco de dados:", err)
+			http.Error(w, "Erro ao conectar ao banco de dados", http.StatusInternalServerError)
+			return
+		}
+
+		err = tpl.ExecuteTemplate(w, "dashboard.html", nil)
 		if err != nil {
 			log.Println("Erro ao executar o template:", err)
 			http.Error(w, "Erro interno do servidor", http.StatusInternalServerError)
@@ -81,5 +97,26 @@ func LoginAuthHandler(w http.ResponseWriter, r *http.Request) {
 			log.Println("Erro ao executar o template:", err)
 			http.Error(w, "Erro interno do servidor", http.StatusInternalServerError)
 		}
+	}
+}
+
+func DbBackupHandler(w http.ResponseWriter, r *http.Request) {
+	if authenticatedUser.Username == "" {
+		log.Println("Erro: usuário não autenticado.")
+		http.Error(w, "Usuário não autenticado", http.StatusUnauthorized)
+		return
+	}
+
+	err := database.MakeDbBackup(authenticatedUser.Username, authenticatedUser.Password)
+	if err != nil {
+		log.Println("Erro ao realizar backup do banco de dados:", err)
+		http.Error(w, "Erro ao realizar backup do banco de dados", http.StatusInternalServerError)
+		return
+	}
+
+	err = tpl.ExecuteTemplate(w, "dashboard.html", "Backup do banco de dados realizado com sucesso!")
+	if err != nil {
+		log.Println("Erro ao renderizar o template:", err)
+		http.Error(w, "Erro interno do servidor", http.StatusInternalServerError)
 	}
 }

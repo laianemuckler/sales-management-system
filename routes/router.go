@@ -1,26 +1,21 @@
 package routes
 
 import (
-	"encoding/json"
-	"log"
 	"net/http"
-	"store/database"
-	"store/models"
 )
 
 func GetEmployeeByIDHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("get employee"))
+	w.Write([]byte("get a employee"))
 }
 
 func GetEmployeesHandler(w http.ResponseWriter, r *http.Request) {
-	var employees []models.Employee
-	var err error
-	employees, err = database.GetEmployees()
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		log.Printf("Error: %s", err)
-		return
-	}
-	json.NewEncoder(w).Encode(&employees)
+	w.Write([]byte("get employess"))
 }
 
+func GetProductByIDHandler(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("get a product"))
+}
+
+func GetProducts(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("get products"))
+}
