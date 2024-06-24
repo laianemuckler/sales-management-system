@@ -29,38 +29,6 @@ func DBconnection(username, password string) (*sql.DB, error) {
 	return db, err
 }
 
-func GetEmployees(username, password string) ([]models.Employee, error) {
-	connection, err := DBconnection(username, password)
-	if err != nil {
-		return nil, err
-	}
-	defer connection.Close()
-
-	rows, err := db.Query("SELECT * FROM funcionarios")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer rows.Close()
-
-	var employees []models.Employee
-
-	for rows.Next() {
-		var e models.Employee
-		err = rows.Scan(&e.ID, &e.Name, &e.CPF, &e.Password, e.Occupation)
-		if err != nil {
-			return nil, err
-		}
-
-		employees = append(employees, e)
-	}
-
-	if err = rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return employees, nil
-}
-
 func GetUserAndPassword(username, password string) ([]models.Employee, error) {
 	connection, err := DBconnection(username, password)
 	if err != nil {
@@ -112,7 +80,6 @@ func MakeDbBackup(username, password string) error {
 		"--file", backupFile,
 		"loja")
 
-
 	outFile, err := os.Create(backupFile)
 	if err != nil {
 		return fmt.Errorf("erro ao criar arquivo de backup: %v", err)
@@ -126,6 +93,26 @@ func MakeDbBackup(username, password string) error {
 	}
 
 	fmt.Println("Backup do banco de dados realizado com sucesso:", backupFile)
+
+	return nil
+}
+
+func InsertSale(username string, password string, order models.Order) error {
+	connection, err := DBconnection(username, password)
+	if err != nil {
+		return err
+	}
+	defer connection.Close()
+
+	query := `INSERT INTO vendas (ven_codigo, ven_horario, ven_valor_total, fun_codigo)
+	VALUES ($1, $2, $3, $4)`
+	_, err = connection.Exec(query, order.ID, order.Time, order.TotalValue, order.EmployeeID)
+	if err != nil {
+		fmt.Println("Erro:", err)
+		return err
+	}
+
+	fmt.Println("Venda inserida com sucesso!")
 
 	return nil
 }
